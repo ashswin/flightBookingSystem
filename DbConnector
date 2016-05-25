@@ -1,0 +1,28 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package uflybookingsystem;
+import java.sql.*;
+/**
+ *
+ * @author 91025412
+ */
+public class DbConnector {   
+    
+    static String url = "jdbc:mysql://localhost:3306/";
+    static String database = "ufly";
+    static String userName = "root";
+    static String password = "password";
+
+    //creates connection to database
+    public static Connection connectToDb() throws SQLException{    
+        url = "jdbc:mysql://localhost:3306/";
+        database = "ufly";
+        userName = "root";
+        password = "password";    
+        return DriverManager.getConnection(url + database,userName, password);
+}
+    
+}
