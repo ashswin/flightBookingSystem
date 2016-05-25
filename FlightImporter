@@ -1,0 +1,184 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package uflybookingsystem;
+import BusinessObjects.Plane;
+import BusinessObjects.Flight;
+import java.text.SimpleDateFormat;
+import java.text.DateFormat;
+import java.io.*;
+import java.util.Date;
+import java.sql.Timestamp;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ *
+ * @author 91025412
+ */
+public class FlightImporter extends BaseImporter {
+    String fileData;
+    DateFormat formatter = new SimpleDateFormat("dd/MM/yyyy HH:mm"); 
+    DateFormat formatter2 = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+    Flight flightToUpdate;
+    Flight flightToAdd;
+    Plane planeType = Plane.AIRBUSA280;
+    boolean isPlane = false;
+    
+    public FlightImporter(String fileName){
+        super(fileName);
+    }
+    
+    public void run(){
+        //ImportResult result = results;
+        ImportResult result = new ImportResult();
+        
+        //Read text file and import data using various checks
+        try(FileReader inputFile = new FileReader(fileName)){
+            int ch = 0;
+            while((ch = inputFile.read()) != -1){
+                fileData += (char)ch;
+            }
+            String[] lines = fileData.replace("\r\n", "\n").replace("\r", "\n").split("\n");
+            String firstLine = lines[0];
+            String[] columns = firstLine.split(",");
+            if(columns.length == 7){
+                if(columns[0].replaceAll("\\s", "").contains("FlightNumber")){ 
+                    String[] l = lines;
+                    lines = new String[lines.length - 1];
+                    System.arraycopy(l, 1, lines, 0, lines.length);
+                    
+                    int lineNum = 1;
+                    //Check text file line by line
+                    for(String line: lines){
+                        try{
+                            if(line.isEmpty()){
+                                continue;
+                            }
+                            //Update totalRows from import result object
+                            result.setTotalRows(result.getTotalRows() + 1);
+                            columns = line.split(",");
+                            
+                            //Number of columns in text file should equal 7, if not update importResult
+                            if(columns.length != 7){
+                                result.setFailedRows(result.getFailedRows() + 1);
+                                result.errorMessages.add("Error occurred at line " + lineNum);
+                                continue;
+                                }
+                            //Ensure columns values are not empty, if so, update importReslt
+                            if(columns[0].isEmpty() || columns[1].isEmpty() || columns[2].isEmpty()){
+                                result.setFailedRows(result.getFailedRows() + 1);
+                                result.errorMessages.add("Error occurred at line " + lineNum);
+                                continue;
+                            }  
+                            //Ensure text meets regex specification
+                            Pattern pattern = Pattern.compile("^[a-zA-Z]{2}(\\d){3}$");
+                            Matcher matcher = pattern.matcher(columns[0]);
+                            if(!matcher.find()){
+                                result.setFailedRows(result.getFailedRows() + 1);
+                                result.errorMessages.add("Error occurred at line " + lineNum);
+                                continue;
+                            }//Ensure text meets regex specification                          
+                            if(!columns[1].matches("[a-zA-Z]{3}") && !columns[2].matches("[a-zA-Z]{3}")){
+                                result.setFailedRows(result.getFailedRows() + 1);
+                                result.errorMessages.add("Error occurred at line " + lineNum);
+                                continue;
+                            }
+                            
+                            try{
+                                //Check that column is of double type
+                                Double.parseDouble(columns[3]);                        
+                            }
+                            catch(Exception e){
+                                 result.setFailedRows(result.getFailedRows() + 1);
+                                result.errorMessages.add("The 'Price' field contains an invalid value on line " + lineNum);
+                                continue;
+                            }
+                            
+                            try{
+                                //Check that column is of integer type
+                                Integer.parseInt(columns[6]);
+                            }
+                            catch(Exception e){
+                                 result.setFailedRows(result.getFailedRows() + 1);
+                                result.errorMessages.add("The 'Seats Taken' field contains an invalid value on line " + lineNum);
+                                continue;
+                            }
+
+                            Timestamp time;
+                            Date date;
+                            try{       
+                                date = formatter.parse(columns[4]);                        
+                                time = Timestamp.valueOf(formatter2.format(date));     
+                                
+                            }
+                            catch(Exception e){
+                                 result.setFailedRows(result.getFailedRows() + 1);
+                                result.errorMessages.add("Invalid date entered on line " + lineNum);
+                                continue;
+                            }
+                            //Check that the plane is listed in the plane enumeration
+                            for(Plane plane: Plane.values()){                        
+                                if(plane.name().equals(columns[5])){
+                                    isPlane = true;
+                                    planeType = plane;                                
+                                }
+                                else{
+                                    result.setFailedRows(result.getFailedRows() + 1);
+                                    result.errorMessages.add("Invalid plane type on line " + lineNum);
+                                    continue;
+                                }
+                            }
+                                if(Integer.valueOf(columns[6]) > planeType.getPassengerCapacity()){//planeType.getPassengerCapacity()){
+                                    result.setFailedRows(result.getFailedRows() + 1);
+                                    result.errorMessages.add("Seats booked exceeds Passenger Capacity at line " + lineNum);
+                                    continue;
+                                }
+                            
+                            
+                            flightToUpdate = DatabaseOperations.getFlightByFLightNumber(columns[0]);
+                            if(flightToUpdate == null){
+                                flightToAdd = new Flight();
+                                flightToAdd.setFlightNumber(columns[0]);
+                                flightToAdd.setDepartureAirport(columns[1]);
+                                flightToAdd.setDestinationAirport(columns[2]);
+                                flightToAdd.setPrice(Double.parseDouble(columns[3]));
+                                flightToAdd.setDateTime(time);
+                                flightToAdd.setPlane(columns[5]);
+                                flightToAdd.setSeatsTaken(Integer.parseInt(columns[6]));
+                                DatabaseOperations.AddFlight(flightToAdd);
+                                 result.setImportedRows(result.getFailedRows() + 1);
+                            }
+                            else{
+                                flightToUpdate = new Flight();
+                                flightToUpdate.setFlightNumber(columns[0]);
+                                flightToUpdate.setDepartureAirport(columns[1]);
+                                flightToUpdate.setDestinationAirport(columns[2]);
+                                flightToUpdate.setPrice(Double.parseDouble(columns[3]));
+                                flightToUpdate.setDateTime(time);
+                                flightToUpdate.setPlane(columns[5]);
+                                flightToUpdate.setSeatsTaken(Integer.parseInt(columns[6]));
+                                DatabaseOperations.UpdateFlight(flightToUpdate);
+                                result.setImportedRows(result.getFailedRows() + 1);
+                            }                                     
+                        }
+                        catch(Exception e){
+                            result.errorMessages.add("Error occurred at line " + lineNum);
+                        }
+                        finally{
+                            lineNum++;
+                        }
+                    }
+                }
+            }
+        }
+        catch(IOException ioe){
+            System.out.println(ioe.toString());
+        }
+        catch(Exception e){
+            System.out.println(e.toString());
+        }
+    }       
+}
