@@ -1,0 +1,125 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package uflybookingsystem;
+import java.io.*;
+import java.io.File;
+import java.util.regex.*;
+import BusinessObjects.*;
+import java.util.ArrayList;
+
+/**
+ *
+ * @author 91025412
+ */
+public class LocationImporter extends BaseImporter {
+    String fileData = "";
+    int failedRows;   
+    String[] lines;
+    String firstLine;
+    String[] columns;
+    String city;
+    String airport;
+    
+    public LocationImporter(String fileName){
+        super(fileName);
+    }
+    @Override
+    public void run(){
+        
+        ImportResult result = new ImportResult();
+              
+        //Read text file and import data using various checks
+        try(FileReader inputFile = new FileReader(fileName)){
+            int ch;
+            while((ch = inputFile.read()) != -1){                
+                fileData += String.valueOf((char)ch);
+            }
+            lines = fileData.replace("\r\n", "\n").replace("\r", "\n").split("\n");
+            firstLine = lines[0];
+            columns = firstLine.split(",");
+            
+            if(columns.length == 2){                
+                if(columns[0].equals("City") && columns[1].replaceAll("\\s", "").contains("AirportCode")){
+                    String[] l = lines;
+                    lines = new String[lines.length - 1];
+                    System.arraycopy(l, 1, lines, 0, lines.length);
+
+                    int lineNum = 1;
+                    city = columns[0].trim();
+                    airport = columns[1].trim();
+
+                    //Check text file line by line
+                    for(String line: lines){                
+                        try{
+                            if(line.isEmpty()){
+                                continue;
+                            }         
+                            //Update totalRows from import result object
+                            result.setTotalRows(result.getTotalRows() + 1);                              
+                            columns = line.split(",");
+                            
+                            //Number of columns in text file should equal 2, if not update importResult
+                            if(columns.length != 2){
+                                result.setFailedRows(result.getFailedRows() + 1);
+                                result.errorMessages.add("Error occurred at line " + lineNum);
+                                continue;
+                            }
+                            //Ensure columns values are not empty, if so, update importReslt
+                            if(columns[0].isEmpty()){
+                                result.setFailedRows(result.getFailedRows() + 1);
+                                result.errorMessages.add("Error occurred at line " + lineNum);
+                                continue;
+                            }
+                            //Ensure columns values are not empty, if so, update importReslt
+                            if(columns[1].isEmpty()){
+                                result.setFailedRows(result.getFailedRows() + 1);
+                                result.errorMessages.add("Error occurred at line " + lineNum);
+                                continue;
+                            }           
+                            //Ensure text meets regex specification
+                            if(!columns[1].matches("[a-zA-Z]{3}")){
+                                result.setFailedRows(result.getFailedRows() + 1);
+                                result.errorMessages.add("Error occurred at line " + lineNum);
+                                continue;
+                            }                          
+                            
+                            Location locationToUpdate = DatabaseOperations.getLocationByAirportCode(airport);
+                            if(locationToUpdate == null){
+                                Location locationToAdd = new Location();
+                                locationToAdd.setCity(columns[0]);
+                                locationToAdd.setAirportCode(columns[1]);
+                                DatabaseOperations.AddLocation(locationToAdd);
+                                BookingForm.locationsList.add(locationToAdd);                        
+                                result.setImportedRows(result.getImportedRows() + 1);
+                            }
+                            else{
+                                locationToUpdate.setCity(columns[0]);
+                                DatabaseOperations.UpdateLocation(locationToUpdate); 
+                                BookingForm.locationsList.add(locationToUpdate);                    
+                                result.setImportedRows(result.getImportedRows() + 1);                   
+                            }                    
+                        }    
+                        catch(Exception e){
+                            e.printStackTrace();
+                            result.setFailedRows(result.getFailedRows() + 1);                            
+                            result.errorMessages.add("Error occurred at line " + lineNum);
+                        }
+                        finally{
+                            lineNum++;
+                        }               
+                    }
+                }
+            }
+        }
+        catch(IOException ioe){
+            result.errorMessages.add("Error occurred reading input file");
+        }
+        catch(Exception e){
+            result.errorMessages.add("Unknown error has occurred");            
+        }
+        super.setResults(result);
+    }
+}
