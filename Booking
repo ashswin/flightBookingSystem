@@ -1,0 +1,106 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package BusinessObjects;
+
+/**
+ *
+ * @author 91025412
+ */
+public class Booking {
+    public int booking;
+    public String flightNumber;
+    public double price;
+    public String cabinClass;
+    public int quantity;
+    //double check data type
+    public boolean insurance;
+
+    /**
+     * @return the booking
+     */
+    public int getBooking() {
+        return booking;
+    }
+
+    /**
+     * @param booking the booking to set
+     */
+    public void setBooking(int booking) {
+        this.booking = booking;
+    }
+
+    /**
+     * @return the flightNumber
+     */
+    public String getFlightNumber() {
+        return flightNumber;
+    }
+
+    /**
+     * @param flightNumber the flightNumber to set
+     */
+    public void setFlightNumber(String flightNumber) {
+        this.flightNumber = flightNumber;
+    }
+
+    /**
+     * @return the price
+     */
+    public double getPrice() {
+        return price;
+    }
+
+    /**
+     * @param price the price to set
+     */
+    public void setPrice(double price) {
+        this.price = price;
+    }
+
+    /**
+     * @return the cabinClass
+     */
+    public String getCabinClass() {
+        return cabinClass;
+    }
+
+    /**
+     * @param cabinClass the cabinClass to set
+     */
+    public void setCabinClass(String cabinClass) {
+        this.cabinClass = cabinClass;
+    }
+
+    /**
+     * @return the quantity
+     */
+    public int getQuantity() {
+        return quantity;
+    }
+
+    /**
+     * @param quantity the quantity to set
+     */
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
+
+    /**
+     * @return the insurance
+     */
+    public boolean getInsurance() {
+        return insurance;
+    }
+
+    /**
+     * @param insurance the insurance to set
+     */
+    public void setInsurance(boolean insurance) {
+        this.insurance = insurance;
+    }
+    
+    
+}
